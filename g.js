@@ -40,17 +40,26 @@ function colCheck(shapeA, shapeB) {
     return {colDir: colDir, box: newBox};
 }
 
+function load() {
+    let witchImage = new Image();
+    witchImage.src = "Witch.png";
+    return {
+	witch: witchImage
+    };
+}
 
 function game() {
+    let sprites = load();
     let canvas = document.getElementsByTagName("canvas")[0];
     let ctx = canvas.getContext("2d"),
 	width = 500,
 	height = 300,
 	player = {
             x: width / 2,
-            y: height - 16,
-            width: 16,
-            height: 16,
+            y: height - 32,
+            width: 32,
+            height: 32,
+	    image: sprites.witch,
             speed: 3,
             velX: 0,
             velY: 0,
@@ -63,7 +72,41 @@ function game() {
 	friction = 0.8,
 	gravity = 0.3,
 	won = false,
-	then = Date.now();
+	then = Date.now(),
+	tickCount = 0;
+
+    let spriteDraw = function (player) {
+	let spriteIndex = 0;
+
+	if (tickCount * Math.ceil(Math.abs(player.velX)) > 10) {
+	    spriteIndex = 32;
+	}
+
+	if (++tickCount > 10) {
+	    tickCount = 0;
+	}
+
+	// console.log("velX", Math.ceil(player.velX));
+	let source_image = player.image,
+	    source_x = ((player.throwDir < 0) ? 32 * 2 : 0) + spriteIndex,
+	    source_y = 0,
+	    source_width = player.width,
+	    source_height = player.height,
+	    destination_x = player.x,
+	    destination_y = player.y - 1,
+	    destination_width = player.width,
+	    destination_height = player.height;
+	ctx.drawImage(
+	    source_image,
+	    source_x,
+	    source_y,
+	    source_width,
+	    source_height,
+	    destination_x,
+	    destination_y,
+	    destination_width,
+	    destination_height); 
+    };
 
     canvas.height = height;
     canvas.width = width;
@@ -72,7 +115,7 @@ function game() {
 	x: 0,
 	y: 0,
 	width: 2,
-	height: height + 100
+	height: height + 200 // keep the point high enough that we can always collide
     }, {
 	x: 0,
 	y: height - 2,
@@ -82,62 +125,72 @@ function game() {
 	x: width - 2,
 	y: 0,
 	width: 2,
-	height: height
+	height: height + 200
     }];
 
     // Draw an identifiable "door"
+    let doorChoice = Math.ceil(Math.random() * 10) < 5;
     let door = {
-	x: (Math.ceil(Math.random() * 10) < 5) ? 0 : width - 5,
+	x: doorChoice ? 0 : width - 5,
 	y: 0,
 	width: 5,
 	height: player.height + 10
     };
-    boxes.push(door);
-
+    let doorList = [door, {
+	x: doorChoice ? 0 : width,
+	y: (player.height + 10),
+	width: doorChoice ? (player.width * 1.5) : 0 - (player.width * 1.5),
+	height: player.height / 3
+    }];
+    doorList.forEach(doorPart => boxes.push(doorPart));
+    
+    // handle box creation
+    let throwBox = function () {
+	boxes.push({
+	    x: player.x + (player.momentum * player.throwDir),
+	    y: player.y - player.momentum / 2,
+	    height: player.momentum,
+	    width: player.momentum
+	});
+	player.momentum = 0;
+    };
+    
     // Key setup
     document.body.addEventListener("keydown", e => keys[e.keyCode] = true);
     document.body.addEventListener("keyup", e => keys[e.keyCode] = false);
 
-    function update(tim) {
-	// console.log("tim", tim);
-
+    let handleInput = function () {
 	// check keys
-	if (keys[38] || keys[32]) {
-            // up arrow or space
-            if (!player.jumping && player.grounded) {
-		player.jumping = true;
-		player.grounded = false;
-		player.velY = -player.speed * 2;
-            }
-	}
+	if (keys[38] || keys[32] || keys[39] || keys[37]) {
+	    if (keys[38] || keys[32]) {
+		// up arrow or space
+		if (!player.jumping && player.grounded) {
+		    player.jumping = true;
+		    player.grounded = false;
+		    player.velY = -player.speed * 2;
+		}
+	    }
 
-	if (keys[39]) {
-            // right arrow
-            if (player.velX < player.speed) {
-		player.velX++;
-		player.throwDir = 1;
+	    if (keys[39]) {
+		// right arrow
+		if (player.velX < player.speed) {
+		    player.velX++;
+		    player.throwDir = 1;
+		}
+	    }
+	    if (keys[37]) {
+		// left arrow
+		if (player.velX > -player.speed) {
+		    player.velX--;
+		    player.throwDir = -1;
+		}
 	    }
 	}
-	if (keys[37]) {
-            // left arrow
-            if (player.velX > -player.speed) {
-		player.velX--;
-		player.throwDir = -1;
-	    }
+	else {
+	    player.velX = 0;
 	}
 
-	// handle box creation
-	let throwBox = function () {
-	    boxes.push({
-		x: player.x + (player.momentum * player.throwDir),
-		y: player.y - player.momentum / 2,
-		height: player.momentum,
-		width: player.momentum
-	    });
-	    player.momentum = 0;
-	};
-
-	if (keys[66]) {
+	if (keys[66]) {  // "b"
 	    if (player.momentum >= 80) {
 		throwBox();
 	    }
@@ -150,8 +203,11 @@ function game() {
 		throwBox();
 	    }
 	}
+    };
 
-	if (player.momentum > 0) {
+    let update = function (tim) {
+	// console.log("tim", tim);
+	if (player.momentum > 0) { // always retard the momentum a bit
 	    player.momentum -= 2;
 	}
 
@@ -197,25 +253,20 @@ function game() {
 	    player.velY = 0;
 	}
 
-	if (player.y <= 0 || player.x < 0) {
-	    console.log("less than 0", player.y, player.x);
-	}
-
 	player.x += player.velX;
 	player.y += player.velY;
 	
 	ctx.fill();
-	ctx.fillStyle = "red";
-	ctx.fillRect(player.x, player.y, player.width, player.height);
+	spriteDraw(player);
 
 	return won;
     }
 
-
     let main = function () {
 	let now = Date.now();
 	let delta = now - then;
-	
+
+	handleInput();
 	let won = update(delta / 1000); 	// render();
 	if (won) {
 	    alert("well done!");
