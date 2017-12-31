@@ -32,6 +32,8 @@ I haven't done sprites yet but I hope to give it a go.
 
 ## How to play this game
 
+[the game image](docs/game-view.png)
+
 The object is to get to the door which is placed on the top of the
 game area at the left or right, randomly.
 
