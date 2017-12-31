@@ -62,7 +62,8 @@ function game() {
 	keys = [],
 	friction = 0.8,
 	gravity = 0.3,
-	won = false;
+	won = false,
+	then = Date.now();
 
     canvas.height = height;
     canvas.width = width;
@@ -71,7 +72,7 @@ function game() {
 	x: 0,
 	y: 0,
 	width: 2,
-	height: height
+	height: height + 100
     }, {
 	x: 0,
 	y: height - 2,
@@ -97,7 +98,9 @@ function game() {
     document.body.addEventListener("keydown", e => keys[e.keyCode] = true);
     document.body.addEventListener("keyup", e => keys[e.keyCode] = false);
 
-    function update() {
+    function update(tim) {
+	// console.log("tim", tim);
+
 	// check keys
 	if (keys[38] || keys[32]) {
             // up arrow or space
@@ -194,24 +197,40 @@ function game() {
 	    player.velY = 0;
 	}
 
+	if (player.y <= 0 || player.x < 0) {
+	    console.log("less than 0", player.y, player.x);
+	}
+
 	player.x += player.velX;
 	player.y += player.velY;
 	
 	ctx.fill();
 	ctx.fillStyle = "red";
 	ctx.fillRect(player.x, player.y, player.width, player.height);
+
+	return won;
+    }
+
+
+    let main = function () {
+	let now = Date.now();
+	let delta = now - then;
 	
+	let won = update(delta / 1000); 	// render();
 	if (won) {
 	    alert("well done!");
 	}
 	else {
-	    requestAnimationFrame(update);
+	    then = now;
+	    requestAnimationFrame(main);
 	}
-    }
+    };
     
-    update();
+    main();
 }
  
 window.addEventListener("load", function () {
     game();
 });
+
+// Ends here
